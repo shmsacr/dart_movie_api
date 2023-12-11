@@ -50,6 +50,36 @@ class AuthService {
           headers: CustomHeader.json.getType);
     });
 
+    app.post("/login", (Request request) async {
+      final user = await request.parseData;
+      if (user.email!.isEmpty || user.password!.isEmpty) {
+        return Response.badRequest(
+            body: json.encode({"error": "Please provide your email/passwor"}),
+            headers: CustomHeader.json.getType);
+      }
+      if (!rx.isValid(user.email!)) {
+        return Response.badRequest(
+            body:
+                json.encode({"error": 'Please provide correct email address'}),
+            headers: CustomHeader.json.getType);
+      }
+      final dbUser = await store.findOne(where.eq('email', user.email));
+      if (dbUser == null) {
+        return Response.badRequest(
+            body: json.encode({"error": "User not found!"}),
+            headers: CustomHeader.json.getType);
+      }
+      final hashedPassword = ps.hashPassword(user.password!, dbUser['salt']);
+      if (hashedPassword != dbUser['password']) {
+        return Response.forbidden(
+            json.encode({'message': 'Incorrect user mail/password'}),
+            headers: CustomHeader.json.getType);
+      }
+      try {
+        final userId = (dbUser['_id'] as ObjectId).toHexString();
+      } catch (e) {}
+    });
+
     return app;
   }
 }
