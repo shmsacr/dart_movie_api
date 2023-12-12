@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dart_movie_api/src/extensions/parse_ext.dart';
 import 'package:dart_movie_api/src/service/password_service.dart';
 import 'package:dart_movie_api/src/service/provider.dart';
+import 'package:dart_movie_api/src/service/token_service.dart';
 import 'package:dart_movie_api/src/utils/email_validator.dart';
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:shelf/shelf.dart';
@@ -20,6 +21,7 @@ class AuthService {
     final app = Router();
     final rx = Provider.of.fetch<RegexValidator>();
     final ps = Provider.of.fetch<PasswordService>();
+    final ts = Provider.of.fetch<TokenService>();
 
     /// Register POST Request
     app.post("/register", (Request request) async {
@@ -77,7 +79,17 @@ class AuthService {
       }
       try {
         final userId = (dbUser['_id'] as ObjectId).toHexString();
-      } catch (e) {}
+        final tokenPair = await ts.createTokenPair(userId);
+        return Response(HttpStatus.ok,
+            body: json.encode(tokenPair.toJson()),
+            headers: CustomHeader.json.getType);
+      } catch (e) {
+        return Response.internalServerError(
+            body: json.encode({
+              'message': 'There was a problem logging you in. Please try again'
+            }),
+            headers: CustomHeader.json.getType);
+      }
     });
 
     return app;
