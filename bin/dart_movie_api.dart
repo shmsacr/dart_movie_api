@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dart_movie_api/src/constants/app_constants.dart';
+import 'package:dart_movie_api/src/middlewares/auth_middleware.dart';
+import 'package:dart_movie_api/src/middlewares/cors_middleware.dart';
 import 'package:dart_movie_api/src/model/token_secret.dart';
 import 'package:dart_movie_api/src/service/auth_service.dart';
 import 'package:dart_movie_api/src/service/db_service.dart';
+import 'package:dart_movie_api/src/service/movie_service.dart';
 import 'package:dart_movie_api/src/service/password_service.dart';
 import 'package:dart_movie_api/src/service/provider.dart';
 import 'package:dart_movie_api/src/service/token_service.dart';
@@ -28,12 +31,18 @@ void main(List<String> arguments) async {
   app.mount(
       '/auth',
       AuthService(
-              store: Provider.of
-                  .fetch<DbService>()
-                  .getStore(AppConstants.userCollection),
+              store: dbInstance.getStore(AppConstants.userCollection),
               secret: "123456")
           .router);
-  await serve(app, InternetAddress.anyIPv4, int.parse(port));
+  app.mount(
+      '/movies',
+      MovieService(store: dbInstance.getStore(AppConstants.movieCollection))
+          .router);
+  final handler = Pipeline()
+      .addMiddleware(corsMiddleware())
+      .addMiddleware(authMiddleware())
+      .addHandler(app);
+  await serve(handler, InternetAddress.anyIPv4, int.parse(port));
   print('Server running on port $port');
 }
 
