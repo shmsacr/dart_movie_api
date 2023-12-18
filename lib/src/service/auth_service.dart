@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:dart_movie_api/src/extensions/parse_ext.dart';
+import 'package:dart_movie_api/src/middlewares/chech_loging_user_middleware.dart';
 import 'package:dart_movie_api/src/service/password_service.dart';
 import 'package:dart_movie_api/src/service/provider.dart';
 import 'package:dart_movie_api/src/service/token_service.dart';
@@ -52,6 +54,7 @@ class AuthService {
           headers: CustomHeader.json.getType);
     });
 
+    /// Login POST Request
     app.post("/login", (Request request) async {
       final user = await request.parseData;
       if (user.email!.isEmpty || user.password!.isEmpty) {
@@ -92,6 +95,51 @@ class AuthService {
       }
     });
 
-    return app;
+    /// Logout POST Request
+    app.post('/logout', (Request request) async {
+      final auth = request.context["authDetails"];
+      final currToken = await ts.getToken((auth as JWT).jwtId!);
+      if (currToken == null) {
+        return Response.forbidden(
+            json.encode({'error': 'Not authorized to perform this action'}),
+            headers: CustomHeader.json.getType);
+      }
+      try {
+        ts.removeToken((auth).jwtId!);
+      } catch (e) {
+        return Response.internalServerError(
+            body: json.encode({
+              'error': 'There was a problem logging you out. Please try again'
+            }),
+            headers: CustomHeader.json.getType);
+      }
+      return Response.ok(
+          json.encode({'message': 'You have been logged out successfully'}),
+          headers: CustomHeader.json.getType);
+    });
+
+    /// Delete User POST Request
+    app.delete('/delete/<userId|.*>', (Request request, String userId) async {
+      try {
+        final user = await store
+            .findOne(where.eq('_id', ObjectId.fromHexString(userId)));
+        if (user != null) {
+          await store
+              .deleteOne(where.eq('_id', ObjectId.fromHexString(userId)));
+          return Response.ok(json.encode({'message': 'User deleted'}),
+              headers: CustomHeader.json.getType);
+        }
+        return Response.notFound(json.encode({'error': 'User not found'}),
+            headers: CustomHeader.json.getType);
+        print('userId: $userId');
+      } catch (e) {
+        return Response.forbidden(
+            {'error': 'Not authorized to perform this action'},
+            headers: CustomHeader.json.getType);
+      }
+    });
+    final handler =
+        Pipeline().addMiddleware(checkLogingUser(store)).addHandler(app);
+    return handler;
   }
 }
