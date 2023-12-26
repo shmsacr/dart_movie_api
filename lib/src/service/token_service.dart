@@ -23,10 +23,16 @@ class TokenService {
       final jwt = JWT.verify(token, SecretKey(secret));
       return jwt;
     } on JWTExpiredException {
-      throw Exception('JWT expired...');
+      throw JwtCustomException(error: 'JWT expired...');
     } on JWTInvalidException {
-      throw Exception("Invalid token...");
+      throw JwtCustomException(error: "Invalid token...");
+    } on JWTUndefinedException {
+      throw JwtCustomException(error: 'Invalid length');
     }
+  }
+
+  Future<Map<String, dynamic>?> getToken(String tokenId) async {
+    return await store.findOne(where.eq('tokenId', tokenId));
   }
 
   Future<TokenPair> createTokenPair(String userId) async {
@@ -51,4 +57,9 @@ class TokenService {
   Future<dynamic> removeToken(String tokenId) async {
     return await store.deleteOne({'tokenId': tokenId});
   }
+}
+
+class JwtCustomException implements Exception {
+  final String error;
+  const JwtCustomException({required this.error});
 }

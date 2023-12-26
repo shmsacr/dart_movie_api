@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:dart_movie_api/src/constants/app_constants.dart';
+import 'package:dart_movie_api/src/extensions/http_ext.dart';
 import 'package:dart_movie_api/src/middlewares/auth_middleware.dart';
 import 'package:dart_movie_api/src/middlewares/cors_middleware.dart';
 import 'package:dart_movie_api/src/model/token_secret.dart';
@@ -24,20 +24,20 @@ void main(List<String> arguments) async {
   final dbInstance = Provider.of.fetch<DbService>();
   await dbInstance.openDb();
 
-  app.get('/', (Request request) {
-    return Response.ok(json.encode({'message': 'Hello World'}),
-        headers: {'Content-Type': 'application/json'});
-  });
   app.mount(
       '/auth',
       AuthService(
               store: dbInstance.getStore(AppConstants.userCollection),
-              secret: "123456")
+              secret: Env.secret)
           .router);
   app.mount(
       '/movies',
       MovieService(store: dbInstance.getStore(AppConstants.movieCollection))
           .router);
+  app.all('crouteName|.*>', (Request request) {
+    final indexFile = File('public/main.html').readAsStringSync();
+    return Response.ok(indexFile, headers: CustomHeader.html.getType);
+  });
   final handler = Pipeline()
       .addMiddleware(corsMiddleware())
       .addMiddleware(authMiddleware())
