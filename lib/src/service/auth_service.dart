@@ -25,6 +25,21 @@ class AuthService {
     final ps = Provider.of.fetch<PasswordService>();
     final ts = Provider.of.fetch<TokenService>();
 
+    /// Me GET Request
+    app.get('/me', (Request request) {
+      final user = request.context['user'];
+      if (user == null) {
+        return Response.forbidden(json.encode({'message': 'User not found...'}),
+            headers: CustomHeader.json.getType);
+      }
+      return Response.ok(
+          json.encode({
+            'userId': (user as Map<String, dynamic>)['_id'],
+            'email': (user)['email']
+          }),
+          headers: CustomHeader.json.getType);
+    });
+
     /// Register POST Request
     app.post("/register", (Request request) async {
       final user = await request.parseData;
