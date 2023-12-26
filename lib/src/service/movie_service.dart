@@ -49,6 +49,16 @@ class MovieService {
               .encode({'message': 'A file add', 'movie_title': movie.title}),
           headers: CustomHeader.json.getType);
     });
+    app.delete('/delete/<movieID|.*', (Request request, String? movieId) async {
+      final movie = await store.findOne(where.eq('movieId', movieId));
+      if (movie == null || movieId == null) {
+        return Response.notFound(json.encode({'error': 'Movie not found...'}),
+            headers: CustomHeader.json.getType);
+      }
+      await store.deleteOne(where.eq('movieId', movieId));
+      return Response.ok(json.encode({'message': 'Movie deleted...'}),
+          headers: CustomHeader.json.getType);
+    });
     final handler =
         Pipeline().addMiddleware(checkAuthorization()).addHandler(app);
     return handler;
